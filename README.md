@@ -1,7 +1,7 @@
 # vibe-coding-presence
 
-Discord Rich Presence di Linux: lagi ngoding apa di **Claude Code CLI**, dan
-lagi dengerin lagu apa.
+Discord Rich Presence buat vibe coding: lagi ngoding apa di **Claude Code
+CLI**, dan lagi dengerin lagu apa. Jalan di **Linux, macOS, dan Windows**.
 
 Menampilkan proyek yang sedang dikerjakan, apa yang sedang dilakukan, berapa
 sesi yang aktif, dan sudah berapa lama — langsung di profil Discord. Saat
@@ -15,12 +15,12 @@ Menjalankan perintah · 2 sesi aktif
 01:23 elapsed
 ```
 
-Tanpa dependensi. Cuma Python 3 pustaka baku dan bash.
+Tanpa dependensi. Cuma Python 3 pustaka baku (plus bash di Linux).
 
 [![uji](https://github.com/Lamiore/vibe-coding-presence/actions/workflows/uji.yml/badge.svg)](https://github.com/Lamiore/vibe-coding-presence/actions/workflows/uji.yml)
 [![lisensi](https://img.shields.io/badge/lisensi-GPL--3.0-blue)](LICENSE)
 ![Python 3](https://img.shields.io/badge/Python%203-tanpa%20dependensi-3776AB?logo=python&logoColor=white)
-![platform](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)
+![platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-555)
 
 ---
 
@@ -40,10 +40,18 @@ menyentuh jaringan — dia jalan di setiap tool call, jadi biayanya harus
 mendekati nol. Kalau daemonnya mati, direktori spool tidak ada dan hook
 langsung keluar tanpa menulis apa pun.
 
+Di macOS dan Windows hook-nya versi Python (`hooks/lagi-ngapain-hook.py`),
+dipanggil lewat *exec form* Claude Code — tanpa shell. bash bawaan macOS (3.2)
+tidak punya `EPOCHREALTIME`, dan Windows belum tentu punya bash sama sekali.
+Biayanya ~25 ms per tool call di Mac (versi bash ~4 ms), dan isinya tetap cuma
+menyalin stdin ke spool. Di sana spool-nya ada di `$TMPDIR` (macOS) atau
+`%LOCALAPPDATA%` (Windows).
+
 Daemon berbicara protokol Discord IPC secara langsung (bingkai
-`<opcode u32 LE><panjang u32 LE><JSON>` lewat soket domain Unix). Hanya empat
-opcode yang dipakai, jadi memasang `pypresence` — yang butuh venv karena pip
-sistem terkunci PEP 668 — tidak sepadan.
+`<opcode u32 LE><panjang u32 LE><JSON>` lewat soket domain Unix, atau named
+pipe `\\.\pipe\discord-ipc-*` di Windows). Hanya empat opcode yang dipakai,
+jadi memasang `pypresence` — yang butuh venv karena pip sistem terkunci PEP
+668 — tidak sepadan.
 
 ## Lagu yang sedang diputar
 
@@ -72,10 +80,27 @@ tidak ngapa-ngapain.
 Kerjaan dan lagu sengaja tidak pernah tampil bersamaan: Discord cuma punya dua baris
 teks, jadi menggabungkannya membuat dua-duanya terpotong.
 
-Sumbernya **MPRIS** di D-Bus sesi lewat `busctl` — bukan pustaka D-Bus, karena
-pip sistem terkunci PEP 668 dan `busctl` sudah pasti ada (bagian dari systemd).
-Hampir semua pemutar di Linux mengumumkan diri lewat MPRIS: Spotify, VLC, mpv,
-dan tab browser termasuk.
+Sumbernya beda per OS, bentuk kartunya sama:
+
+| OS | sumber | yang terbaca |
+|---|---|---|
+| Linux | **MPRIS** di D-Bus sesi lewat `busctl` | hampir semua pemutar: Spotify, VLC, mpv, tab browser |
+| macOS | **AppleScript** lewat `osascript` | Spotify dan Apple Music saja |
+| Windows | **Windows Media Session** lewat PowerShell | semua yang muncul di panel media Windows, tab browser termasuk |
+
+Di Linux dipakai `busctl`, bukan pustaka D-Bus: pip sistem terkunci PEP 668
+dan `busctl` sudah pasti ada (bagian dari systemd).
+
+**macOS cuma Spotify dan Music.** Apple mengunci API now-playing sistem untuk
+aplikasi pihak ketiga sejak macOS 15.4, jadi tab browser tidak bisa dibaca
+tanpa trik yang rapuh. Pemutarnya hanya ditanya kalau prosesnya memang jalan —
+`tell application` ke aplikasi yang mati justru menyalakannya. Pertama kali,
+macOS menanyakan izin *python3 ingin mengendalikan Spotify*; kalau ditolak,
+lagunya tidak tampil dan log memberi petunjuk sekali (System Settings →
+Privacy & Security → Automation).
+
+**Windows dibaca tiap 15 detik**, bukan 5: tiap pembacaan menyalakan
+PowerShell, dan penerbitan presence memang direm 15 detik.
 
 **Yang perlu disadari soal browser.** Tab browser mengumumkan judul apa pun
 yang sedang diputar, bukan cuma musik — judul video YouTube ikut tampil. Yang
@@ -172,7 +197,8 @@ sama personalnya. Sampul album ikut ditutup di mode itu — di kedua kartu:
 gambar sampul yang kebaca orang membocorkan lagunya persis seperti judulnya.
 
 **Dua sumber data, tidak ada yang lain:** muatan hook Claude Code (`cwd`,
-nama alat, id sesi) dan MPRIS di D-Bus sesi. Judul jendela, isi berkas,
+nama alat, id sesi) dan pemutar musik (MPRIS / AppleScript / Windows Media
+Session, lihat di atas). Judul jendela, isi berkas,
 ketikan, dan papan klip tidak pernah disentuh.
 
 **Satu permintaan keluar,** dan cuma satu jenis: pencarian sampul ke iTunes
@@ -187,8 +213,25 @@ Proyek yang namanya tidak boleh tampil sama sekali didaftarkan di
 ## Pasang
 
 ```bash
-./pasang.sh
+./pasang.sh          # Linux (systemd)
+python3 pasang.py    # macOS (launchd)
+py pasang.py         # Windows (Run di registry, tanpa admin)
 ```
+
+| OS | autostart | log |
+|---|---|---|
+| Linux | service systemd pengguna `lagi-ngapain` | `journalctl --user -u lagi-ngapain -f` |
+| macOS | LaunchAgent `io.github.lamiore.lagi-ngapain` | `~/Library/Logs/lagi-ngapain.log` |
+| Windows | nilai `lagi-ngapain` di `HKCU\…\Run`, lewat `pythonw` (tanpa jendela) | `~/.cache/lagi-ngapain/daemon.log` |
+
+Clone repo ini ke tempat tetap dulu — autostart dan hook menunjuk ke folder
+itu. Di macOS dan Windows, jalankan `pasang.py` lagi sesudah memindah repo
+atau menaikkan versi Python mayor.
+
+> **Windows belum diuji di mesin asli.** Suite ujinya jalan dan lolos di
+> Windows (termasuk named pipe dan Windows Media Session sungguhan di GitHub
+> Actions), tapi alur penuhnya — Discord asli, autostart saat login — belum
+> dicoba di PC Windows.
 
 Pemasang akan meminta **Application ID** Discord. Bikin dulu:
 
@@ -210,14 +253,29 @@ hook alat lain seperti `rtk` atau `context-mode` tidak disentuh.
 > (Diuji langsung: presence terbit ~15 detik setelah `pasang.sh` selesai,
 > dari sesi yang sudah jalan sebelum pemasangan.)
 
+Di Windows tidak ada systemd yang menyalakan ulang daemon yang jatuh. Daemon
+menyentuh berkas `detak` tiap detik dan hook diam kalau detaknya basi, jadi
+daemon yang mati tidak meninggalkan spool yang terus menumpuk; menghentikannya
+pun lewat berkas tanda, bukan sinyal, supaya presence sempat dikosongkan.
+
 ## Pakai
 
 ```bash
 ./cc_daemon.py --status               # konfig, soket, keadaan spool
-systemctl --user restart lagi-ngapain # setelah mengubah konfig
-journalctl --user -u lagi-ngapain -f  # lihat apa yang diterbitkan
-./copot.sh                            # cabut hook + service
+systemctl --user restart lagi-ngapain # setelah mengubah konfig (Linux)
+journalctl --user -u lagi-ngapain -f  # lihat apa yang diterbitkan (Linux)
+./copot.sh                            # cabut hook + service (Linux)
+python3 pasang.py --copot             # cabut hook + autostart (macOS/Windows)
 ```
+
+Muat ulang sesudah mengubah konfig di macOS dan Windows:
+
+```bash
+launchctl kickstart -k gui/$(id -u)/io.github.lamiore.lagi-ngapain   # macOS
+py pasang.py                                                        # Windows
+```
+
+`--musik on|off` menyimpan konfig dan memuat ulang daemon sendiri di ketiga OS.
 
 Konfigurasi: `~/.config/lagi-ngapain/konfig.json`
 
@@ -264,18 +322,19 @@ menerbitkan ulang, karena presence hilang saat koneksi putus.
 ## Uji
 
 ```bash
-python3 uji/semua.py                # 207 uji, cepat (~0,02 dtk)
+python3 uji/semua.py                # seluruh uji, ~1 dtk
 python3 uji/uji_cc_state.py         # satu berkas saja
 python3 uji/probe/pulih_koneksi.py  # ~40 dtk, di luar suite
 ```
 
-207 uji, tanpa Discord yang menyala dan tanpa menyentuh jaringan — bagian
-IPC-nya diuji lewat server soket palsu yang bicara protokol yang sama, bagian
-MPRIS-nya lewat jawaban `busctl` palsu, dan pencarian sampulnya lewat pencari
-yang disuntik.
+Tanpa Discord yang menyala dan tanpa menyentuh jaringan — bagian IPC-nya
+diuji lewat server soket palsu (dan server named pipe `_winapi` di Windows)
+yang bicara protokol yang sama, pembaca lagunya lewat jawaban `busctl`,
+`osascript`, dan PowerShell palsu, dan pencarian sampulnya lewat pencari yang
+disuntik.
 
 Suite yang sama jalan otomatis di GitHub Actions (`.github/workflows/uji.yml`)
-tiap push dan pull request.
+di Linux, macOS, dan Windows tiap push dan pull request.
 
 ### Mengubah kata-katanya
 
