@@ -12,6 +12,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -116,6 +117,35 @@ class UjiSpool(DasarDaemon):
         self.taruh("basi.json", ev("hantu", "PreToolUse"))
         self.d.siapkan_spool()
         self.assertEqual(list(self.d.spool.iterdir()), [])
+
+
+class UjiTandaHidup(DasarDaemon):
+    """Detak dan tanda berhenti: pengganti systemd di OS yang tidak punya."""
+
+    def test_siapkan_spool_menyalakan_detak(self):
+        self.assertTrue(self.d.berkas_detak.exists())
+
+    def test_tanda_berhenti_sisa_tidak_mematikan_daemon_baru(self):
+        self.d.tanda_berhenti.touch()
+        self.d.siapkan_spool()
+        self.assertFalse(self.d.tanda_berhenti.exists())
+
+    def test_bereskan_spool_ikut_mematikan_detak(self):
+        self.d.bereskan_spool()
+        self.assertFalse(self.d.berkas_detak.exists())
+
+    def test_tanda_berhenti_menghentikan_daemon_dengan_rapi(self):
+        self.d.musik = self.d.sampul = None
+        # Tanda ditaruh selagi daemon tidur di denyut pertama -- persis yang
+        # dilakukan pemasang di Windows.
+        with mock.patch.object(cc_daemon.time, "sleep",
+                               lambda _: self.d.tanda_berhenti.touch()), \
+                mock.patch.object(cc_daemon.signal, "signal"):
+            self.assertEqual(self.d.jalankan(), 0)
+        self.assertFalse(self.d.spool.exists(), "spool harus dibereskan")
+        self.assertFalse(self.d.tanda_berhenti.exists(), "tanda harus dibuang")
+        self.assertFalse(self.d.berkas_detak.exists(), "hook harus kembali diam")
+        self.assertIsNone(self.d.klien.terbit[-1], "presence harus dikosongkan")
 
 
 class UjiRemLaju(DasarDaemon):

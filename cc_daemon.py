@@ -35,6 +35,12 @@ JEDA_SAMBUNG = 10.0
 # Berkas spool yang JSON-nya belum utuh dibiarkan selama ini sebelum
 # dianggap rusak -- menutup lomba baca/tulis tanpa membebani hook.
 TENGGANG_RUSAK = 3.0
+# Dua berkas di samping spool, pengganti pengawas proses di OS yang tidak
+# punya systemd. Detak disentuh tiap denyut; hook Python diam kalau detaknya
+# basi. Tanda berhenti ditaruh pemasang untuk meminta daemon keluar dengan
+# rapi -- di Windows os.kill selalu berarti TerminateProcess.
+DETAK = "detak"
+BERHENTI = "berhenti"
 
 # Penanda "belum pernah menerbitkan apa pun". Tidak bisa memakai None karena
 # None adalah muatan yang sah (artinya: kosongkan presence).
@@ -108,6 +114,8 @@ class Daemon:
     def __init__(self, cfg: dict) -> None:
         self.cfg = cfg
         self.spool = dir_spool()
+        self.berkas_detak = self.spool.parent / DETAK
+        self.tanda_berhenti = self.spool.parent / BERHENTI
         self.registry = Registry(
             ttl=cfg["ttl_sesi"],
             mode=cfg["mode"],
@@ -142,9 +150,20 @@ class Daemon:
         self.spool.mkdir(parents=True, exist_ok=True)
         for f in self.spool.iterdir():  # buang sisa jalan sebelumnya
             f.unlink(missing_ok=True)
+        # Tanda yang tidak sempat dijawab daemon lama tidak boleh langsung
+        # mematikan daemon yang baru.
+        self.tanda_berhenti.unlink(missing_ok=True)
+        self.detak()
+
+    def detak(self) -> None:
+        try:
+            self.berkas_detak.touch()
+        except OSError:
+            pass
 
     def bereskan_spool(self) -> None:
         """Menghapus direktori spool supaya hook kembali jadi no-op."""
+        self.berkas_detak.unlink(missing_ok=True)
         try:
             for f in self.spool.iterdir():
                 f.unlink(missing_ok=True)
@@ -258,6 +277,11 @@ class Daemon:
 
         try:
             while self.jalan:
+                if self.tanda_berhenti.exists():
+                    self.tanda_berhenti.unlink(missing_ok=True)
+                    _log("diminta berhenti")
+                    break
+                self.detak()
                 sekarang = time.time()
                 self.serap_peristiwa(sekarang)
                 self.registry.bersihkan(sekarang)
