@@ -229,6 +229,19 @@ class UjiMac(unittest.TestCase):
         self.assertIsNone(lagu)
         self.assertEqual(ditanya, [])
 
+    def test_ruas_kosong_di_ujung_tidak_hilang(self):
+        # Skrip Music selalu diakhiri tab & "" -- strip() biasa ikut memakan
+        # tab itu dan lagunya tidak pernah tampil. Lewat subprocess.run
+        # sungguhan, bukan _osascript palsu, supaya pembersihannya ikut teruji.
+        balasan = subprocess.CompletedProcess([], 0, "Judul\tArtis\tAlbum\t\n", "")
+        with mock.patch.object(cm, "_jalan", lambda n: n == "Music"), \
+                mock.patch.object(cm.subprocess, "run", return_value=balasan):
+            lagu = cm.lagu_mac()
+        self.assertEqual((lagu["judul"], lagu["album"], lagu["sampul_mentah"]), ("Judul", "Album", ""))
+
+    def test_ruas_kurang_tetap_terbaca_selama_ada_judul(self):
+        self.assertEqual(cm._urai_mac("Spotify", "Judul\tArtis")["artis"], "Artis")
+
     def test_izin_automation_ditolak_cuma_diperingatkan_sekali(self):
         ditolak = subprocess.CompletedProcess([], 1, "", "execution error: Not authorized (-1743)")
         with mock.patch.object(cm.subprocess, "run", return_value=ditolak), \

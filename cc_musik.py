@@ -167,12 +167,14 @@ def _osascript(skrip: str) -> str:
         print("musik: macOS menolak akses ke pemutar (-1743). Izinkan lewat System Settings"
               " > Privacy & Security > Automation, lalu muat ulang daemon.",
               file=sys.stderr, flush=True)
-    return hasil.stdout.strip() if hasil.returncode == 0 else ""
+    # Cuma akhir baris yang dibuang: strip() biasa ikut memakan tab penutup
+    # ruas sampul yang kosong.
+    return hasil.stdout.rstrip("\r\n") if hasil.returncode == 0 else ""
 
 
 def _urai_mac(pemutar: str, teks: str) -> dict | None:
-    ruas = [r.strip() for r in teks.split("\t")]
-    if len(ruas) < 4 or not ruas[0]:
+    ruas = [r.strip() for r in teks.split("\t")] + ["", "", ""]
+    if not ruas[0]:
         return None
     return {"judul": ruas[0], "artis": ruas[1], "album": ruas[2],
             "sampul_mentah": ruas[3], "pemutar": pemutar.lower()}

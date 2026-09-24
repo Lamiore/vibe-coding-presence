@@ -97,7 +97,8 @@ tanpa trik yang rapuh. Pemutarnya hanya ditanya kalau prosesnya memang jalan —
 `tell application` ke aplikasi yang mati justru menyalakannya. Pertama kali,
 macOS menanyakan izin *python3 ingin mengendalikan Spotify*; kalau ditolak,
 lagunya tidak tampil dan log memberi petunjuk sekali (System Settings →
-Privacy & Security → Automation).
+Privacy & Security → Automation). Python Homebrew ditandatangani ad-hoc, jadi
+izin itu bisa perlu diberikan ulang sesudah `brew upgrade python`.
 
 **Windows dibaca tiap 15 detik**, bukan 5: tiap pembacaan menyalakan
 PowerShell, dan penerbitan presence memang direm 15 detik.
@@ -228,10 +229,11 @@ Clone repo ini ke tempat tetap dulu — autostart dan hook menunjuk ke folder
 itu. Di macOS dan Windows, jalankan `pasang.py` lagi sesudah memindah repo
 atau menaikkan versi Python mayor.
 
-> **Windows belum diuji di mesin asli.** Suite ujinya jalan dan lolos di
-> Windows (termasuk named pipe dan Windows Media Session sungguhan di GitHub
-> Actions), tapi alur penuhnya — Discord asli, autostart saat login — belum
-> dicoba di PC Windows.
+> **Windows belum diuji di mesin asli.** Suite ujinya lolos di Windows di
+> GitHub Actions — termasuk bolak-balik bingkai lewat named pipe sungguhan, dan
+> skrip PowerShell Windows Media Session yang jalan tanpa galat (tanpa ada
+> media yang diputar). Alur penuhnya — Discord asli, lagu yang benar-benar
+> diputar, autostart saat login — belum dicoba di PC Windows.
 
 Pemasang akan meminta **Application ID** Discord. Bikin dulu:
 
