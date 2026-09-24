@@ -16,8 +16,9 @@ from pathlib import Path
 from cc_state import PERISTIWA
 
 # Penanda yang membedakan hook kita dari milik alat lain. Pencabutan
-# mencocokkan substring ini, jadi jangan diubah tanpa alasan.
-PENANDA = "lagi-ngapain-hook.sh"
+# mencocokkan substring ini, jadi jangan diubah tanpa alasan. Sengaja tanpa
+# ekstensi: cocok dengan .sh (Linux) maupun .py (macOS, Windows).
+PENANDA = "lagi-ngapain-hook"
 
 
 def jalur_settings() -> Path:
@@ -41,11 +42,23 @@ def _tulis(jalur: Path, data: dict) -> None:
 
 
 def _punya_kita(entri: dict) -> bool:
-    return any(PENANDA in str(h.get("command", "")) for h in entri.get("hooks", []) if isinstance(h, dict))
+    for h in entri.get("hooks", []):
+        if not isinstance(h, dict):
+            continue
+        # Di exec form penandanya ada di args; command cuma jalur python.
+        args = h.get("args") if isinstance(h.get("args"), list) else []
+        if any(PENANDA in str(x) for x in [h.get("command", ""), *args]):
+            return True
+    return False
 
 
-def pasang(perintah: str, jalur: Path | None = None, cadangkan: bool = True) -> tuple[bool, str]:
-    """Sisipkan hook ke tiap peristiwa yang dipakai. Idempoten."""
+def pasang(perintah: str, jalur: Path | None = None, cadangkan: bool = True,
+           args: list[str] | None = None) -> tuple[bool, str]:
+    """Sisipkan hook ke tiap peristiwa yang dipakai. Idempoten.
+
+    ``args`` memasang exec form: Claude Code menjalankan ``perintah`` langsung
+    dengan argumen itu, tanpa shell -- bentuk yang dipakai di macOS dan Windows.
+    """
     jalur = jalur or jalur_settings()
     data = _muat(jalur)
     if cadangkan and jalur.exists():
@@ -62,7 +75,10 @@ def pasang(perintah: str, jalur: Path | None = None, cadangkan: bool = True) -> 
             return False, f"hooks.{ev} bukan larik -- dibiarkan, perbaiki manual"
         if any(_punya_kita(e) for e in daftar if isinstance(e, dict)):
             continue  # sudah terpasang
-        daftar.append({"hooks": [{"type": "command", "command": perintah}]})
+        hook = {"type": "command", "command": perintah}
+        if args is not None:
+            hook["args"] = list(args)
+        daftar.append({"hooks": [hook]})
         ditambah.append(ev)
 
     _tulis(jalur, data)

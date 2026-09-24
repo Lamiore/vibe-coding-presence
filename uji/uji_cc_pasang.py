@@ -163,5 +163,43 @@ class UjiCopot(Dasar):
         self.assertEqual(self.baca(), NYATA)
 
 
+class UjiExecForm(Dasar):
+    """macOS dan Windows memanggil hook Python tanpa shell: command + args."""
+
+    PY = "/opt/homebrew/bin/python3"
+    ARGS = ["-I", "-S", "/r/hooks/lagi-ngapain-hook.py", "/var/folders/ab/T/lagi-ngapain/ev"]
+
+    def test_args_ikut_tertulis(self):
+        self.tulis(NYATA)
+        ok, _ = cp.pasang(self.PY, self.jalur, args=self.ARGS)
+        self.assertTrue(ok)
+        entri = self.baca()["hooks"]["PreToolUse"][-1]["hooks"][0]
+        self.assertEqual(entri, {"type": "command", "command": self.PY, "args": self.ARGS})
+
+    def test_tanpa_args_bentuk_lama_tidak_berubah(self):
+        cp.pasang(PERINTAH, self.jalur)
+        self.assertNotIn("args", self.baca()["hooks"]["Stop"][-1]["hooks"][0])
+
+    def test_pasang_ulang_terkenali_lewat_args(self):
+        # Penandanya ada di args, bukan di command (yang cuma jalur python).
+        self.tulis(NYATA)
+        cp.pasang(self.PY, self.jalur, args=self.ARGS)
+        cp.pasang(self.PY, self.jalur, args=self.ARGS)
+        for ev in PERISTIWA:
+            milik_kita = [e for e in self.baca()["hooks"][ev] if cp._punya_kita(e)]
+            self.assertEqual(len(milik_kita), 1, ev)
+
+    def test_copot_mencabut_exec_form(self):
+        self.tulis(NYATA)
+        cp.pasang(self.PY, self.jalur, args=self.ARGS)
+        cp.copot(self.jalur)
+        self.assertEqual(cp.terpasang(self.jalur), [])
+        self.assertEqual(self.baca(), NYATA)
+
+    def test_args_bukan_larik_tidak_meledak(self):
+        self.tulis({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "x", "args": 5}]}]}})
+        self.assertEqual(cp.terpasang(self.jalur), [])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
