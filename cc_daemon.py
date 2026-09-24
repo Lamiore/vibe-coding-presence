@@ -328,10 +328,8 @@ def main(argv=None) -> int:
         # Daemon membaca konfig sekali saat start, jadi perubahannya baru
         # berlaku setelah dimuat ulang. Dilakukan di sini supaya "tombol
         # panik" benar-benar satu perintah.
-        import subprocess
-        hasil = subprocess.run(["systemctl", "--user", "restart", "lagi-ngapain.service"],
-                               capture_output=True, text=True)
-        print("service:", "dimuat ulang" if hasil.returncode == 0 else "belum jalan, tidak dimuat ulang")
+        import cc_layanan
+        print("service:", "dimuat ulang" if cc_layanan.muat_ulang() else "belum jalan, tidak dimuat ulang")
         return 0
 
     if args.status:
