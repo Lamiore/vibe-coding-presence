@@ -95,7 +95,13 @@ def waktu_nyala_pc(jalur_stat: Path = Path("/proc/stat")) -> float:
 
 
 def _log(*a) -> None:
-    print(time.strftime("[%H:%M:%S]"), *a, flush=True)
+    baris = " ".join([time.strftime("[%H:%M:%S]"), *map(str, a)])
+    try:
+        print(baris, flush=True)
+    except UnicodeEncodeError:
+        # Konsol cp1252 di Windows tidak kenal emoji; log tidak boleh
+        # menjatuhkan daemon.
+        print(baris.encode("ascii", "replace").decode("ascii"), flush=True)
 
 
 def _siapkan_keluaran() -> None:

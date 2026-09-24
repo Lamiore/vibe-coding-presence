@@ -231,7 +231,7 @@ class UjiPipaWindows(unittest.TestCase):
         self.diterima = []
         self.h = _winapi.CreateNamedPipe(
             self.nama, _winapi.PIPE_ACCESS_DUPLEX,
-            _winapi.PIPE_TYPE_BYTE | _winapi.PIPE_READMODE_BYTE | _winapi.PIPE_WAIT,
+            _winapi.PIPE_WAIT,  # mode byte bernilai 0, jadi tidak ada konstantanya
             1, 65536, 65536, 0, _winapi.NULL)
         self.addCleanup(_winapi.CloseHandle, self.h)
         threading.Thread(target=self._layani, daemon=True).start()
