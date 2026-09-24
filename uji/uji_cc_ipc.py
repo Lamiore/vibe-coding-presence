@@ -14,6 +14,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -85,6 +86,7 @@ class ServerPalsu:
             pass
 
 
+@unittest.skipUnless(hasattr(socket, "AF_UNIX"), "soket Unix tidak ada di Windows")
 class UjiPencarianSoket(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
@@ -124,6 +126,7 @@ class UjiPencarianSoket(unittest.TestCase):
         self.assertEqual(cc_ipc.cari_soket(), [])
 
 
+@unittest.skipUnless(hasattr(socket, "AF_UNIX"), "soket Unix tidak ada di Windows")
 class UjiKlien(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
@@ -211,6 +214,78 @@ class UjiKlien(unittest.TestCase):
         with cc_ipc.KlienDiscord("123456") as k:
             balasan = k.set_activity(besar)
         self.assertEqual(balasan["data"]["activity"]["details"], besar["details"])
+
+
+@unittest.skipUnless(sys.platform == "win32", "named pipe cuma ada di Windows")
+class UjiPipaWindows(unittest.TestCase):
+    """Discord di Windows bicara lewat named pipe, bukan soket Unix.
+
+    Servernya dibuat lewat _winapi -- modul pustaka baku yang juga dipakai
+    multiprocessing -- jadi jalur baca/tulis pipe yang sungguhan ikut teruji.
+    """
+
+    def setUp(self):
+        import _winapi
+        self.w = _winapi
+        self.nama = "\\\\.\\pipe\\lagi-ngapain-uji-%d" % os.getpid()
+        self.diterima = []
+        self.h = _winapi.CreateNamedPipe(
+            self.nama, _winapi.PIPE_ACCESS_DUPLEX,
+            _winapi.PIPE_TYPE_BYTE | _winapi.PIPE_READMODE_BYTE | _winapi.PIPE_WAIT,
+            1, 65536, 65536, 0, _winapi.NULL)
+        self.addCleanup(_winapi.CloseHandle, self.h)
+        threading.Thread(target=self._layani, daemon=True).start()
+
+    def _baca(self, n):
+        data = b""
+        while len(data) < n:
+            bagian, _ = self.w.ReadFile(self.h, n - len(data))
+            if not bagian:
+                raise OSError("pipe ditutup")
+            data += bagian
+        return data
+
+    def _kirim(self, op, muatan):
+        b = json.dumps(muatan).encode()
+        self.w.WriteFile(self.h, struct.pack("<II", op, len(b)) + b)
+
+    def _layani(self):
+        try:
+            try:
+                self.w.ConnectNamedPipe(self.h, False)
+            except OSError as e:
+                if getattr(e, "winerror", None) != 535:  # klien sudah keburu tersambung
+                    return
+            while True:
+                op, panjang = struct.unpack("<II", self._baca(8))
+                muatan = json.loads(self._baca(panjang) if panjang else b"{}")
+                self.diterima.append((op, muatan))
+                self._kirim(cc_ipc.OP_FRAME, {"cmd": "SET_ACTIVITY", "data": muatan.get("args")})
+        except OSError:
+            return
+
+    def test_handshake_lalu_set_activity_lewat_pipe(self):
+        with mock.patch.object(cc_ipc, "cari_soket", return_value=[self.nama]):
+            with cc_ipc.KlienDiscord("123456") as k:
+                balasan = k.set_activity({"details": "halo " + "d" * 4000})
+        self.assertEqual(self.diterima[0][0], cc_ipc.OP_HANDSHAKE)
+        self.assertEqual(self.diterima[0][1]["client_id"], "123456")
+        self.assertEqual(self.diterima[1][1]["args"]["activity"]["details"][:4], "halo")
+        self.assertEqual(len(balasan["data"]["activity"]["details"]), 4005)
+
+
+class UjiPencarianPipa(unittest.TestCase):
+    def test_hanya_pipe_discord_yang_dikembalikan(self):
+        with mock.patch.object(cc_ipc.sys, "platform", "win32"), \
+                mock.patch.object(cc_ipc.os, "listdir",
+                                  return_value=["lain", "discord-ipc-1", "discord-ipc-0"]):
+            self.assertEqual(cc_ipc.cari_soket(), [cc_ipc.PIPA_WINDOWS + "discord-ipc-0",
+                                                   cc_ipc.PIPA_WINDOWS + "discord-ipc-1"])
+
+    def test_folder_pipe_tak_terbaca_balikan_kosong(self):
+        with mock.patch.object(cc_ipc.sys, "platform", "win32"), \
+                mock.patch.object(cc_ipc.os, "listdir", side_effect=OSError):
+            self.assertEqual(cc_ipc.cari_soket(), [])
 
 
 if __name__ == "__main__":
