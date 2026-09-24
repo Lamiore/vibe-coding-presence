@@ -1,4 +1,4 @@
-# lagi-ngapain
+# vibe-coding-presence
 
 Discord Rich Presence di Linux: lagi ngoding apa di **Claude Code CLI**, dan
 lagi dengerin lagu apa.
@@ -17,7 +17,7 @@ Menjalankan perintah · 2 sesi aktif
 
 Tanpa dependensi. Cuma Python 3 pustaka baku dan bash.
 
-[![uji](https://github.com/Lamiore/lagi-ngapain/actions/workflows/uji.yml/badge.svg)](https://github.com/Lamiore/lagi-ngapain/actions/workflows/uji.yml)
+[![uji](https://github.com/Lamiore/vibe-coding-presence/actions/workflows/uji.yml/badge.svg)](https://github.com/Lamiore/vibe-coding-presence/actions/workflows/uji.yml)
 [![lisensi](https://img.shields.io/badge/lisensi-GPL--3.0-blue)](LICENSE)
 ![Python 3](https://img.shields.io/badge/Python%203-tanpa%20dependensi-3776AB?logo=python&logoColor=white)
 ![platform](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)

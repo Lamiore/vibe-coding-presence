@@ -1,6 +1,6 @@
 [Unit]
 Description=Discord Rich Presence: Claude Code CLI dan lagu yang diputar
-Documentation=https://github.com/Lamiore/lagi-ngapain
+Documentation=https://github.com/Lamiore/vibe-coding-presence
 After=graphical-session.target
 
 [Service]

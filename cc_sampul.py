@@ -29,7 +29,7 @@ BATAS_SINGGAHAN = 200
 # Galat tidak boleh disinggahi permanen, tapi juga tidak boleh diulang tiap
 # denyut -- ini jarak minimum sebelum lagu yang sama dicoba lagi.
 MASA_TENANG = 60.0
-_UA = "lagi-ngapain (+https://github.com/Lamiore/lagi-ngapain)"
+_UA = "lagi-ngapain (+https://github.com/Lamiore/vibe-coding-presence)"
 
 
 def jalur_singgahan() -> Path:
