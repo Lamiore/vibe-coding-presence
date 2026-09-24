@@ -290,10 +290,21 @@ class UjiWaktuNyalaPc(unittest.TestCase):
             stat.write_text("cpu  1 2 3 4\nintr 5\nbtime 1789478631\nprocesses 99\n", encoding="utf-8")
             self.assertEqual(cc_daemon.waktu_nyala_pc(stat), 1789478631.0)
 
+    @unittest.skipUnless(sys.platform.startswith("linux"), "CLOCK_BOOTTIME cuma ada di Linux")
     def test_tanpa_btime_jatuh_ke_jam_boottime(self):
         # /proc/stat bisa disembunyikan sandbox systemd (ProcSubset=pid).
         perkiraan = time.time() - time.clock_gettime(time.CLOCK_BOOTTIME)
         self.assertAlmostEqual(cc_daemon.waktu_nyala_pc(Path("/tidak/ada/stat")), perkiraan, delta=2)
+
+    def test_tanpa_proc_stat_tetap_masuk_akal_di_semua_os(self):
+        # macOS dan Windows tidak punya /proc sama sekali.
+        nyala = cc_daemon.waktu_nyala_pc(Path("/tidak/ada/stat"))
+        self.assertLess(nyala, time.time())
+        self.assertGreater(nyala, time.time() - 365 * 86400)
+
+    def test_keluaran_sysctl_macos_terurai(self):
+        teks = "{ sec = 1790039066, usec = 280999 } Tue Sep 22 09:04:26 2026\n"
+        self.assertEqual(cc_daemon._urai_boottime(teks), 1790039066.0)
 
     def _daemon(self, **timpa):
         return cc_daemon.Daemon(dict(cc_konfig.BAWAAN, client_id="123456", **timpa))

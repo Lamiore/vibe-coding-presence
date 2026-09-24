@@ -1,10 +1,12 @@
 """Uji untuk cc_konfig -- jalankan: python3 uji/uji_cc_konfig.py"""
 
 import json
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -124,6 +126,34 @@ class UjiSumberTimer(unittest.TestCase):
 
     def test_nilai_ngawur_jatuh_ke_bawaan(self):
         self.assertEqual(self.muat_dengan({"sumber_timer": "kapan-kapan"})["sumber_timer"], "nyala_pc")
+
+
+class UjiDirRuntime(unittest.TestCase):
+    """Soket Discord dan spool harus dicari di folder yang sama dengan Discord."""
+
+    def _dengan(self, platform, **env):
+        bersih = {k: v for k, v in os.environ.items()
+                  if k not in ("XDG_RUNTIME_DIR", "TMPDIR", "LOCALAPPDATA")}
+        bersih.update(env)
+        with mock.patch.dict(os.environ, bersih, clear=True), \
+                mock.patch.object(ck.sys, "platform", platform):
+            return ck.dir_runtime()
+
+    def test_xdg_didahulukan_di_semua_os(self):
+        for platform in ("linux", "darwin", "win32"):
+            with self.subTest(platform=platform):
+                self.assertEqual(self._dengan(platform, XDG_RUNTIME_DIR="/x/run"), Path("/x/run"))
+
+    def test_macos_memakai_tmpdir(self):
+        self.assertEqual(self._dengan("darwin", TMPDIR="/var/folders/ab/T/"), Path("/var/folders/ab/T"))
+
+    def test_macos_tanpa_tmpdir_bertanya_ke_getconf(self):
+        with mock.patch.object(ck, "_getconf", return_value="/var/folders/cd/T/"):
+            self.assertEqual(self._dengan("darwin"), Path("/var/folders/cd/T"))
+
+    def test_windows_memakai_localappdata(self):
+        self.assertEqual(self._dengan("win32", LOCALAPPDATA=r"C:\Users\x\AppData\Local"),
+                         Path(r"C:\Users\x\AppData\Local"))
 
 
 if __name__ == "__main__":

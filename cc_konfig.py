@@ -16,6 +16,9 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 MODE_VALID = ("minimal", "normal", "detail")
@@ -66,6 +69,36 @@ BAWAAN: dict = {
     # Kunci yang tidak disebut memakai bawaan di cc_state.LABEL_BAWAAN.
     "label": {},
 }
+
+
+def dir_runtime() -> Path:
+    """Folder per pengguna tempat soket Discord dan spool berada.
+
+    ``XDG_RUNTIME_DIR`` didahulukan di semua OS: Discord sendiri memeriksanya
+    lebih dulu, dan uji memakainya untuk membelokkan spool. macOS jatuh ke
+    ``$TMPDIR`` -- di situ Discord menaruh soketnya -- dan karena launchd
+    tidak selalu mengisinya, ditanyakan ke ``getconf``. Windows memakai
+    ``%LOCALAPPDATA%``: jalurnya sama dari terminal mana pun, sedangkan TEMP
+    di Git Bash bisa menunjuk ke tempat lain.
+    """
+    dasar = os.environ.get("XDG_RUNTIME_DIR")
+    if dasar:
+        return Path(dasar)
+    if sys.platform == "win32":
+        return Path(os.environ.get("LOCALAPPDATA") or tempfile.gettempdir())
+    if sys.platform == "darwin":
+        dasar = os.environ.get("TMPDIR") or _getconf("DARWIN_USER_TEMP_DIR")
+        if dasar:
+            return Path(dasar)
+    return Path(f"/run/user/{os.getuid()}")
+
+
+def _getconf(nama: str) -> str:
+    try:
+        return subprocess.run(["getconf", nama], capture_output=True, text=True,
+                              encoding="utf-8", timeout=2).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
 
 
 def jalur_konfig() -> Path:

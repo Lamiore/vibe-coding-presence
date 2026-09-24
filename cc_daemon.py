@@ -13,6 +13,7 @@ import argparse
 import json
 import os
 import signal
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -41,8 +42,17 @@ BELUM_PERNAH = object()
 
 
 def dir_spool() -> Path:
-    dasar = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
-    return Path(dasar) / "lagi-ngapain" / "ev"
+    return cc_konfig.dir_runtime() / "lagi-ngapain" / "ev"
+
+
+def jalur_log() -> Path:
+    """Log daemon kalau tidak ada yang menampung stdout-nya (pythonw di Windows)."""
+    return cc_sampul.jalur_singgahan().parent / "daemon.log"
+
+
+def _urai_boottime(teks: str) -> float:
+    """``sysctl -n kern.boottime`` -> epoch: ``{ sec = 1790039066, usec = ... } ...``."""
+    return float(int(teks.split("sec =")[1].split(",")[0]))
 
 
 def waktu_nyala_pc(jalur_stat: Path = Path("/proc/stat")) -> float:
@@ -52,7 +62,8 @@ def waktu_nyala_pc(jalur_stat: Path = Path("/proc/stat")) -> float:
     daemon yang dimuat ulang menerbitkan timer yang persis sama. Kalau
     berkasnya tidak kebaca (sandbox bisa menyembunyikan /proc), dihitung
     dari jam CLOCK_BOOTTIME -- yang ikut menghitung masa suspend, sama
-    seperti ``uptime``.
+    seperti ``uptime``. macOS dan Windows tidak punya keduanya dan ditanya
+    lewat jalannya sendiri.
     """
     try:
         for baris in jalur_stat.read_text(encoding="utf-8").splitlines():
@@ -60,11 +71,37 @@ def waktu_nyala_pc(jalur_stat: Path = Path("/proc/stat")) -> float:
                 return float(int(baris.split()[1]))
     except (OSError, ValueError, IndexError):
         pass
-    return float(round(time.time() - time.clock_gettime(time.CLOCK_BOOTTIME)))
+    if sys.platform == "darwin":
+        try:
+            return _urai_boottime(subprocess.run(
+                ["sysctl", "-n", "kern.boottime"], capture_output=True, text=True,
+                encoding="utf-8", timeout=2).stdout)
+        except (OSError, subprocess.SubprocessError, IndexError, ValueError):
+            pass
+    if sys.platform == "win32":
+        import ctypes
+        detak = ctypes.windll.kernel32.GetTickCount64
+        detak.restype = ctypes.c_uint64
+        return float(round(time.time() - detak() / 1000))
+    if hasattr(time, "CLOCK_BOOTTIME"):
+        return float(round(time.time() - time.clock_gettime(time.CLOCK_BOOTTIME)))
+    return float(round(time.time()))  # jalan terakhir: timer mulai dari sekarang
 
 
 def _log(*a) -> None:
     print(time.strftime("[%H:%M:%S]"), *a, flush=True)
+
+
+def _siapkan_keluaran() -> None:
+    """Log selalu UTF-8: emoji di presence meledakkan cp1252 di Windows."""
+    if sys.stdout is None:  # pythonw di Windows: tidak ada konsol sama sekali
+        log = jalur_log()
+        log.parent.mkdir(parents=True, exist_ok=True)
+        sys.stdout = sys.stderr = open(log, "w", encoding="utf-8", buffering=1)
+        return
+    for aliran in (sys.stdout, sys.stderr):
+        if hasattr(aliran, "reconfigure"):
+            aliran.reconfigure(encoding="utf-8", errors="replace")
 
 
 class Daemon:
@@ -290,6 +327,7 @@ def main(argv=None) -> int:
         print("spool        :", spool, "(aktif)" if spool.is_dir() else "(daemon mati)")
         return 0
 
+    _siapkan_keluaran()
     return Daemon(cfg).jalankan()
 
 
