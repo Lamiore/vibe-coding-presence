@@ -59,6 +59,15 @@ systemctl --user daemon-reload
 systemctl --user enable --now "$UNIT"
 say "$(systemctl --user is-active "$UNIT") -- log: journalctl --user -u $UNIT -f"
 
+# Perintah pendek "presence" untuk membuka menu atur.py. Nama yang sudah
+# dipakai program lain tidak ditimpa.
+BIN="$HOME/.local/bin/presence"
+if [ -e "$BIN" ] && [ "$(basename "$(readlink "$BIN" 2>/dev/null)")" != atur.py ]; then
+  say "perintah 'presence' tidak dibuat: $BIN sudah dipakai program lain"
+else
+  mkdir -p "$HOME/.local/bin" && ln -sfn "$DIR/atur.py" "$BIN" && say "perintah pendek: presence"
+fi
+
 echo
 echo "Selesai. Presence muncul dalam ~15 detik."
 say "Sesi Claude Code yang sedang jalan ikut terpantau -- settings.json"

@@ -216,8 +216,14 @@ Proyek yang namanya tidak boleh tampil sama sekali didaftarkan di
 Paling gampang lewat menu terminal — jalan di ketiga OS:
 
 ```bash
-python3 atur.py      # Linux, macOS  (Windows: py atur.py)
+python3 atur.py      # pertama kali (Windows: py atur.py)
+presence             # sesudahnya, dari folder mana pun
 ```
+
+Pemasang membuat perintah pendek `presence`: symlink di `~/.local/bin`
+(Linux, macOS), atau `presence.cmd` di `%LOCALAPPDATA%\Microsoft\WindowsApps`
+(Windows) — dua-duanya folder yang sudah ada di PATH. Nama yang sudah dipakai
+program lain tidak ditimpa, dan copot ikut mencabutnya.
 
 ```
  vibe-coding-presence

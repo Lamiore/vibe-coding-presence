@@ -39,6 +39,7 @@ def python_hook() -> str:
 
 def copot() -> int:
     say(cc_layanan.copot())
+    cc_layanan.copot_perintah()
     say(cc_pasang.copot()[1])
     # Singgahan sampul murni turunan -- beda dengan konfig, tidak ada yang
     # hilang kalau dibuang.
@@ -93,6 +94,7 @@ def pasang_semua(cid: str) -> int:
 
     print("==> Autostart")
     say(cc_layanan.pasang())
+    say(cc_layanan.pasang_perintah())
 
     print()
     print("Selesai. Presence muncul dalam ~15 detik.")

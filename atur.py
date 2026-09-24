@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Menu terminal: Application ID dan saklar presence.
 
+    presence             # sesudah dipasang sekali
     python3 atur.py      # Linux, macOS
     py atur.py           # Windows
 
@@ -200,6 +201,11 @@ def main() -> int:
                 lapor(False, "pilih 1, 2, 3, atau q")
     except (EOFError, KeyboardInterrupt):
         print()
+        if not sys.stdin.isatty():
+            # Mis. dijalankan lewat "!" di Claude Code: tidak ada keyboard,
+            # jadi menu tertutup sebelum sempat memilih apa pun.
+            print("  menu ini butuh terminal interaktif -- buka jendela terminal biasa"
+                  " lalu ketik: presence")
         return 0
 
 

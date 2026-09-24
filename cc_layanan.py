@@ -28,6 +28,9 @@ LABEL = "io.github.lamiore.lagi-ngapain"
 NAMA_RUN = "lagi-ngapain"
 KUNCI_RUN = r"Software\Microsoft\Windows\CurrentVersion\Run"
 DAEMON = Path(__file__).resolve().with_name("cc_daemon.py")
+ATUR = Path(__file__).resolve().with_name("atur.py")
+# Perintah pendek untuk membuka menu atur.py dari terminal mana pun.
+PERINTAH = "presence"
 
 
 def _jalankan(*argumen: str) -> bool:
@@ -172,6 +175,51 @@ def copot() -> str:
         hentikan()
         return "autostart dicabut, daemon dihentikan"
     raise RuntimeError("di Linux pakai ./copot.sh")
+
+
+# -- perintah pendek --------------------------------------------------------
+
+def jalur_perintah() -> Path:
+    """Folder yang sudah ada di PATH tanpa perlu disunting.
+
+    Windows: WindowsApps milik pengguna selalu ada di PATH bawaan. macOS dan
+    Linux: ~/.local/bin, yang juga dipakai pip dan pipx.
+    """
+    if sys.platform == "win32":
+        dasar = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+        return dasar / "Microsoft" / "WindowsApps" / f"{PERINTAH}.cmd"
+    return Path.home() / ".local" / "bin" / PERINTAH
+
+
+def _milik_kita(jalur: Path) -> bool:
+    try:
+        if sys.platform == "win32":
+            return "atur.py" in jalur.read_text(encoding="oem", errors="replace")
+        return jalur.is_symlink() and Path(os.readlink(jalur)).name == "atur.py"
+    except OSError:
+        return False
+
+
+def pasang_perintah() -> str:
+    jalur = jalur_perintah()
+    if (jalur.exists() or jalur.is_symlink()) and not _milik_kita(jalur):
+        return f"perintah '{PERINTAH}' tidak dibuat: {jalur} sudah dipakai program lain"
+    jalur.parent.mkdir(parents=True, exist_ok=True)
+    if sys.platform == "win32":
+        # cmd.exe membaca berkas .cmd dengan code page OEM, bukan UTF-8.
+        jalur.write_text(f'@"{sys.executable}" "{ATUR}" %*\r\n', encoding="oem")
+    else:
+        jalur.unlink(missing_ok=True)
+        jalur.symlink_to(ATUR)
+    if shutil.which(PERINTAH) is None:
+        return f"perintah '{PERINTAH}' dibuat di {jalur}, tapi foldernya belum ada di PATH"
+    return f"perintah pendek: {PERINTAH}"
+
+
+def copot_perintah() -> None:
+    jalur = jalur_perintah()
+    if _milik_kita(jalur):
+        jalur.unlink()
 
 
 def terpasang() -> bool:

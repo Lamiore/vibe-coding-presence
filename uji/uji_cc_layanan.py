@@ -85,5 +85,51 @@ class UjiHentikan(unittest.TestCase):
         t.join(1)
 
 
+class UjiPerintahPendek(unittest.TestCase):
+    """`presence` di terminal: symlink di ~/.local/bin, .cmd di WindowsApps."""
+
+    def setUp(self):
+        d = tempfile.TemporaryDirectory()
+        self.addCleanup(d.cleanup)
+        self.jalur = Path(d.name) / ("presence.cmd" if sys.platform == "win32" else "presence")
+        t = mock.patch.object(cl, "jalur_perintah", return_value=self.jalur)
+        t.start()
+        self.addCleanup(t.stop)
+
+    def test_dibuat_menunjuk_ke_atur(self):
+        cl.pasang_perintah()
+        if sys.platform == "win32":
+            self.assertIn(str(cl.ATUR), self.jalur.read_text(encoding="oem"))
+        else:
+            self.assertEqual(self.jalur.resolve(), cl.ATUR)
+
+    def test_pasang_ulang_aman(self):
+        cl.pasang_perintah()
+        cl.pasang_perintah()
+        self.assertTrue(cl._milik_kita(self.jalur))
+
+    def test_nama_yang_dipakai_program_lain_tidak_ditimpa(self):
+        self.jalur.write_text("program orang lain")
+        pesan = cl.pasang_perintah()
+        self.assertIn("dipakai", pesan)
+        self.assertEqual(self.jalur.read_text(), "program orang lain")
+
+    def test_copot_hanya_mencabut_milik_kita(self):
+        cl.pasang_perintah()
+        cl.copot_perintah()
+        self.assertFalse(self.jalur.exists() or self.jalur.is_symlink())
+        self.jalur.write_text("program orang lain")
+        cl.copot_perintah()
+        self.assertTrue(self.jalur.exists())
+
+    @unittest.skipIf(sys.platform == "win32", "symlink")
+    def test_symlink_ke_program_lain_tidak_ditimpa(self):
+        lain = self.jalur.with_name("program-lain")
+        lain.write_text("x")
+        self.jalur.symlink_to(lain)
+        cl.pasang_perintah()
+        self.assertEqual(self.jalur.resolve(), lain.resolve())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -7,6 +7,8 @@ UNIT="lagi-ngapain.service"
 systemctl --user disable --now "$UNIT" 2>/dev/null || true
 rm -f ~/.config/systemd/user/"$UNIT"
 systemctl --user daemon-reload
+BIN="$HOME/.local/bin/presence"
+[ "$(basename "$(readlink "$BIN" 2>/dev/null)")" = atur.py ] && rm -f "$BIN"
 
 python3 - "$DIR" <<'PY'
 import sys
