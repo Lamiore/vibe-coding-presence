@@ -55,8 +55,7 @@ def main(argv: list[str]) -> int:
         return copot()
 
     print("==> Konfigurasi")
-    cfg = cc_konfig.muat()
-    cid = (argv[0] if argv else "") or cfg["client_id"]
+    cid = (argv[0] if argv else "") or cc_konfig.muat()["client_id"]
     if not cid:
         print()
         say("Application ID Discord belum ada. Bikin dulu:")
@@ -71,6 +70,12 @@ def main(argv: list[str]) -> int:
     if not cid:
         print("Application ID wajib diisi.")
         return 1
+    return pasang_semua(cid)
+
+
+def pasang_semua(cid: str) -> int:
+    """Konfig, hook, dan autostart sekaligus; dipakai juga oleh atur.py."""
+    cfg = cc_konfig.muat()
     cfg["client_id"] = cid
     say("konfig:", cc_konfig.simpan(cfg))
     say("mode privasi:", cfg["mode"])

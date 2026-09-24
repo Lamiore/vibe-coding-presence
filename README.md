@@ -213,6 +213,35 @@ Proyek yang namanya tidak boleh tampil sama sekali didaftarkan di
 
 ## Pasang
 
+Paling gampang lewat menu terminal — jalan di ketiga OS:
+
+```bash
+python3 atur.py      # Linux, macOS  (Windows: py atur.py)
+```
+
+```
+ vibe-coding-presence
+ ──────────────────────────────────────
+ Presence  ● nyala
+ Daemon    jalan
+ Discord   kebuka
+ App ID    1402837465912837465
+ ──────────────────────────────────────
+  1  Masukin / ganti Application ID
+  2  Nyalain presence
+  3  Matiin presence
+  q  Keluar
+```
+
+"Nyalain" yang pertama sekaligus memasang hook dan autostart. "Matiin"
+bertahan walau PC di-restart: daemon tetap dinyalakan saat login, membaca
+`aktif: false`, lalu langsung keluar dengan rapi — jadi autostart-nya tidak
+perlu dicabut-pasang. Status Discord diperiksa dengan benar-benar menyambung,
+bukan sekadar melihat berkas soket, karena di macOS berkas itu tertinggal
+sesudah Discord ditutup.
+
+Pemasang langsungnya, kalau lebih suka tanpa menu:
+
 ```bash
 ./pasang.sh          # Linux (systemd)
 python3 pasang.py    # macOS (launchd)
@@ -284,6 +313,7 @@ Konfigurasi: `~/.config/lagi-ngapain/konfig.json`
 | kunci | bawaan | arti |
 |---|---|---|
 | `client_id` | — | Application ID Discord |
+| `aktif` | `true` | saklar presence dari `atur.py`; `false` bertahan lewat restart |
 | `mode` | `normal` | tingkat privasi (lihat di atas) |
 | `proyek_privat` | `[]` | nama folder yang disamarkan |
 | `jeda_publish` | `15` | jarak minimum antar penerbitan, detik |

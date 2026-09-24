@@ -148,6 +148,20 @@ class UjiTandaHidup(DasarDaemon):
         self.assertIsNone(self.d.klien.terbit[-1], "presence harus dikosongkan")
 
 
+class UjiSaklarAktif(DasarDaemon):
+    def test_dimatikan_keluar_rapi_tanpa_menyalakan_hook(self):
+        self.d.bereskan_spool()
+        self.d.cfg["aktif"] = False
+        # Pengaman: kalau saklarnya diabaikan, loop berhenti sesudah satu
+        # denyut dan ujinya gagal, bukan menggantung selamanya.
+        with mock.patch.object(cc_daemon.signal, "signal"), \
+                mock.patch.object(cc_daemon.time, "sleep", lambda _: setattr(self.d, "jalan", False)):
+            # Kode 0: systemd, launchd, dan Run key tidak menyalakannya ulang.
+            self.assertEqual(self.d.jalankan(), 0)
+        self.assertEqual(self.d.klien.terbit, [], "tidak boleh menyentuh Discord sama sekali")
+        self.assertFalse(self.d.spool.exists(), "hook harus tetap diam")
+
+
 class UjiRemLaju(DasarDaemon):
     def test_terbitan_pertama_langsung_jalan(self):
         self.d.terbitkan({"details": "x"}, 100.0)

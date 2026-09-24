@@ -29,6 +29,9 @@ BAWAAN: dict = {
     # Nama aplikasinya jadi baris paling atas di presence. "Claude Code"
     # ditolak Discord (nama merek), jadi pakai nama lain, mis. "Terminal".
     "client_id": "",
+    # Saklar presence dari menu atur.py. false: daemon langsung keluar dengan
+    # rapi saat dinyalakan, jadi presence tetap mati walau PC di-restart.
+    "aktif": True,
     "mode": "normal",
     # Proyek yang namanya tidak boleh tampil walau mode >= normal.
     # Dicocokkan ke nama folder, tidak peka huruf besar-kecil.
@@ -142,6 +145,8 @@ def muat(jalur: Path | None = None) -> dict:
     cfg["jeda_publish"] = max(15, int(cfg["jeda_publish"] or 15))
     cfg["ttl_sesi"] = max(60, int(cfg["ttl_sesi"] or 900))
     cfg["client_id"] = str(cfg["client_id"] or "").strip()
+    # Cuma false yang eksplisit yang boleh mematikan presence diam-diam.
+    cfg["aktif"] = cfg["aktif"] is not False
     return cfg
 
 

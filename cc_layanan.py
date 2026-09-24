@@ -174,6 +174,15 @@ def copot() -> str:
     raise RuntimeError("di Linux pakai ./copot.sh")
 
 
+def terpasang() -> bool:
+    """Apakah autostart daemon sudah dipasang di OS ini."""
+    if sys.platform == "darwin":
+        return jalur_plist().exists()
+    if sys.platform == "win32":
+        return _terpasang_windows()
+    return (Path.home() / ".config" / "systemd" / "user" / "lagi-ngapain.service").exists()
+
+
 def muat_ulang() -> bool:
     """Nyalakan ulang daemon supaya konfig baru terbaca. False kalau belum terpasang."""
     if sys.platform == "darwin":

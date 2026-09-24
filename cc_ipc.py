@@ -100,7 +100,7 @@ class _Pipa:
         self._f.close()
 
 
-def _buka(jalur: str, timeout: float):
+def buka(jalur: str, timeout: float):
     """Sambungan ke satu kandidat: named pipe di Windows, soket Unix di tempat lain."""
     if jalur.startswith(PIPA_WINDOWS):
         return _Pipa(jalur)
@@ -136,7 +136,7 @@ class KlienDiscord:
         galat_terakhir: Exception | None = None
         for jalur in kandidat:
             try:
-                self._sock = _buka(jalur, self.timeout)
+                self._sock = buka(jalur, self.timeout)
                 self._kirim(OP_HANDSHAKE, {"v": 1, "client_id": self.client_id})
                 op, muatan = self._terima()
                 if op == OP_CLOSE:

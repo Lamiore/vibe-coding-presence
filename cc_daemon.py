@@ -270,6 +270,11 @@ class Daemon:
         self.jalan = False
 
     def jalankan(self) -> int:
+        if not self.cfg.get("aktif", True):
+            # Kode 0 disengaja: systemd, launchd, dan Run key tidak menyalakan
+            # ulang daemon yang keluar bersih, jadi "mati" bertahan lewat restart.
+            _log("presence dimatikan (aktif: false) -- nyalakan lewat atur.py")
+            return 0
         if not self.cfg["client_id"]:
             _log("client_id belum diisi di", cc_konfig.jalur_konfig())
             _log("Buat aplikasi di https://discord.com/developers/applications,")
@@ -336,6 +341,7 @@ def main(argv=None) -> int:
         from cc_ipc import cari_soket
         print("konfig       :", cc_konfig.jalur_konfig())
         print("client_id    :", cfg["client_id"] or "(belum diisi)")
+        print("presence     :", "nyala" if cfg["aktif"] else "MATI (nyalakan lewat atur.py)")
         print("mode privasi :", cfg["mode"])
         print("musik        :", "nyala" if cfg["musik"] else "mati",
               ("(abaikan: " + ", ".join(cfg["abaikan_pemutar"]) + ")") if cfg["abaikan_pemutar"] else "")

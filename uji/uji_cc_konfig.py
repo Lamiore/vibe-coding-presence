@@ -156,5 +156,28 @@ class UjiDirRuntime(unittest.TestCase):
                          Path(r"C:\Users\x\AppData\Local"))
 
 
+class UjiAktif(unittest.TestCase):
+    """Saklar presence dari menu atur.py; harus bertahan lewat restart."""
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.jalur = Path(self.dir.name) / "konfig.json"
+
+    def test_bawaannya_nyala(self):
+        self.assertIs(ck.muat(self.jalur)["aktif"], True)
+
+    def test_mati_terbaca_dari_berkas(self):
+        self.jalur.write_text(json.dumps({"aktif": False}), encoding="utf-8")
+        self.assertIs(ck.muat(self.jalur)["aktif"], False)
+
+    def test_nilai_ngawur_dianggap_nyala(self):
+        # Cuma false yang eksplisit yang boleh mematikan presence diam-diam.
+        for nilai in ("false", 0, None, "mati"):
+            with self.subTest(nilai=nilai):
+                self.jalur.write_text(json.dumps({"aktif": nilai}), encoding="utf-8")
+                self.assertIs(ck.muat(self.jalur)["aktif"], True)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
